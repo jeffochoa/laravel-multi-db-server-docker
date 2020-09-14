@@ -1,0 +1,69 @@
+version: "3"
+networks:
+  app-tier:
+    driver: bridge
+volumes:
+  mysqldata:
+    driver: "local"
+  mysqldata-2:
+    driver: "local"
+  redisdata:
+    driver: "local"
+services:
+  app:
+    container_name: laravel-app
+    env_file: .docker.env
+    build:
+      context: .
+      dockerfile: .docker/php/Dockerfile
+    networks:
+      - app-tier
+    ports:
+      - 9002:9000
+    volumes:
+      - .:/srv/app
+    depends_on:
+      - redis
+  nginx:
+    container_name: laravel-nginx
+    depends_on:
+      - mariadb
+      - mariadb-2
+      - app
+    build:
+      context: .
+      dockerfile: .docker/nginx/Dockerfile
+    networks:
+      - app-tier
+    volumes:
+      - ./public:/srv/app/public
+  mariadb:
+    container_name: laravel-database
+    env_file: .docker.env
+    image: mariadb:10.3
+    restart: always
+    container_name: mariadb
+    ports:
+      - "13306:3306"
+    networks:
+      - app-tier
+    volumes:
+     - mysqldata:/var/lib/mysql
+  mariadb-2:
+    container_name: laravel-database-2
+    env_file: .docker.env
+    image: mariadb:10.3
+    restart: always
+    container_name: mariadb-2
+    ports:
+      - "13307:3306"
+    networks:
+      - app-tier
+    volumes:
+     - mysqldata-2:/var/lib/mysql
+  redis:
+    image: redis:alpine
+    volumes:
+     - redisdata:/data
+    networks:
+     - app-tier
